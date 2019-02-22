@@ -1,0 +1,27 @@
+int a;
+int b;
+int c;
+
+bool x;
+bool y;
+bool z;
+
+{
+    a = 5; 
+    b = 6;
+
+    c = a && b;
+    print c;
+    
+    c = a || b;
+    print c;
+
+    x = true;
+    y = false;
+
+    z = x && y;
+    print z;
+
+    z = x || y;
+    print z;
+}

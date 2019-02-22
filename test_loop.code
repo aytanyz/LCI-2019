@@ -1,0 +1,13 @@
+int n;
+int x;
+
+{
+    n=5;
+    x=10;
+    print x;
+    loop(n)
+    {
+        n--;
+        print x;
+    }
+}

@@ -1,0 +1,12 @@
+int a;
+int b;
+int max;
+
+{
+    a=6;
+    b=9;
+
+    max = (a>b) ? a : b;
+    
+    print max;
+}
