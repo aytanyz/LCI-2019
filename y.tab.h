@@ -45,49 +45,55 @@ extern int yydebug;
 # define YYTOKENTYPE
   enum yytokentype
   {
-    AND = 258,
-    OR = 259,
-    GE = 260,
-    LE = 261,
-    EQ = 262,
-    NE = 263,
-    FALSE = 264,
-    TRUE = 265,
-    LOOP = 266,
+    XOR = 258,
+    AND = 259,
+    OR = 260,
+    GE = 261,
+    LE = 262,
+    EQ = 263,
+    NE = 264,
+    FALSE = 265,
+    TRUE = 266,
     IF = 267,
     ELSE = 268,
-    WHILE = 269,
-    PRINT = 270,
-    BOOL_TYPE = 271,
-    INT_TYPE = 272,
-    ID = 273,
-    VAL = 274,
-    IF_ALONE = 275,
-    MINUS = 276,
-    PLUS = 277
+    QUES = 269,
+    DOT = 270,
+    WHILE = 271,
+    PRINT = 272,
+    LOOP = 273,
+    BOOL_TYPE = 274,
+    INT_TYPE = 275,
+    ID = 276,
+    VAL = 277,
+    IF_ALONE = 278,
+    MINUS = 279,
+    PLUS = 280
   };
 #endif
 /* Tokens.  */
-#define AND 258
-#define OR 259
-#define GE 260
-#define LE 261
-#define EQ 262
-#define NE 263
-#define FALSE 264
-#define TRUE 265
-#define LOOP 266
+#define XOR 258
+#define AND 259
+#define OR 260
+#define GE 261
+#define LE 262
+#define EQ 263
+#define NE 264
+#define FALSE 265
+#define TRUE 266
 #define IF 267
 #define ELSE 268
-#define WHILE 269
-#define PRINT 270
-#define BOOL_TYPE 271
-#define INT_TYPE 272
-#define ID 273
-#define VAL 274
-#define IF_ALONE 275
-#define MINUS 276
-#define PLUS 277
+#define QUES 269
+#define DOT 270
+#define WHILE 271
+#define PRINT 272
+#define LOOP 273
+#define BOOL_TYPE 274
+#define INT_TYPE 275
+#define ID 276
+#define VAL 277
+#define IF_ALONE 278
+#define MINUS 279
+#define PLUS 280
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
@@ -107,7 +113,7 @@ union YYSTYPE
   } type;
   struct stmt *stmt;
 
-#line 111 "y.tab.h" /* yacc.c:1909  */
+#line 117 "y.tab.h" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;

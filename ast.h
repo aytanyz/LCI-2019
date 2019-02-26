@@ -10,7 +10,6 @@ enum expr_type {
   LITERAL,
   VARIABLE,
   BIN_OP,
-  EXPR_TERNARY,
 };
 
 struct expr {
@@ -23,14 +22,6 @@ struct expr {
       struct expr *rhs;
       int op;
     } binop; // for type == BIN_OP
-
-    //#####################################################################################################################
-    struct {
-      struct expr *cond;
-      struct expr *if_true;
-      struct expr *if_false;
-    }expr_ternary;
-    //#####################################################################################################################
   };
 };
 
@@ -38,9 +29,6 @@ struct expr* bool_lit(int v);
 struct expr* literal(int v);
 struct expr* variable(size_t id);
 struct expr* binop(struct expr *lhs, int op, struct expr *rhs);
-//#####################################################################################################################
-struct expr* make_expr_ternary(struct expr *cond, struct expr *if_true, struct expr *if_false);
-//#####################################################################################################################
 
 void print_expr(struct expr *expr);
 void emit_stack_machine(struct expr *expr);
@@ -57,6 +45,7 @@ enum stmt_type {
   STMT_WHILE,
   STMT_PRINT,
   STMT_TERNARY,
+  STMT_TER_ASSIGN,
   STMT_LOOP,
 };
 
@@ -83,16 +72,24 @@ struct stmt {
     } print; // for type == STMT_PRINT
     //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
     struct {
+      size_t id;
       struct expr *cond;
       struct expr *if_true;
       struct expr *if_false;
     } ternary; //for type == STMT_TERNARY 
+
+    struct {
+      struct expr *cond;
+      size_t id1;
+      size_t id2;
+      struct expr *e;     
+    } ter_assign; //for type == STMT_TER_ASSIGN
     //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
     //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
     struct {
-      struct expr *num;
+      size_t num;      
       struct stmt *body;
-    } loop; // for type == STMT_LOOP
+    } loop_; // for type == STMT_LOOP
     //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
   };
 };
@@ -103,10 +100,11 @@ struct stmt* make_while(struct expr *e, struct stmt *body);
 struct stmt* make_ifelse(struct expr *e, struct stmt *if_body, struct stmt *else_body);
 struct stmt* make_if(struct expr *e, struct stmt *body);
 //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-struct stmt* make_ternary(struct expr *cond, struct expr *if_true, struct expr *if_false);
+struct stmt* make_ternary(size_t id, struct expr *cond, struct expr *if_true, struct expr *if_false);
+struct stmt* make_ter_assign(struct expr *cond, size_t id1, size_t id2, struct expr *e);
 //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-struct stmt* make_loop(struct expr *num, struct stmt *body);
+struct stmt* make_loop(size_t num, struct stmt *body); 
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
 struct stmt* make_print(struct expr *e);

@@ -44,17 +44,6 @@ struct expr* binop(struct expr *lhs, int op, struct expr *rhs) {
   return r;
 }
 
-//#####################################################################################################################
-struct expr* make_expr_ternary(struct expr *cond, struct expr *if_true, struct expr *if_false){
-  struct expr* r = malloc(sizeof(struct expr));
-  r->type = EXPR_TERNARY;
-  r->expr_ternary.cond = cond;
-  r->expr_ternary.if_true = if_true;
-  r->expr_ternary.if_false = if_false;
-  return r;
-}
-//#####################################################################################################################
-
 void print_expr(struct expr *expr) {
   switch (expr->type) {
     case BOOL_LIT:
@@ -80,6 +69,7 @@ void print_expr(struct expr *expr) {
         //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         case AND: printf(" && "); break;
         case OR: printf(" || "); break;
+        case XOR: printf(" ^ "); break;
         //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
        
         default: printf(" %c ", expr->binop.op); break;
@@ -87,17 +77,6 @@ void print_expr(struct expr *expr) {
       print_expr(expr->binop.rhs);
       printf(")");
       break;  
-
-    //#####################################################################################################################
-    case EXPR_TERNARY:
-      print_expr(expr->expr_ternary.cond);
-      printf(" ? ");
-      print_expr(expr->expr_ternary.if_true);
-      printf(" : ");
-      print_expr(expr->expr_ternary.if_false);
-      printf(";");
-      break;
-    //#####################################################################################################################
   }
 }
 
@@ -142,25 +121,37 @@ void print_stmt(struct stmt *stmt, int indent) {
     case STMT_LOOP: 
       print_indent(indent);
       printf("loop (");
-      print_expr(stmt->loop.num);
+      printf("%s = ", string_int_rev(&global_ids, stmt->loop_.num));
       printf(") {\n");
-      print_stmt(stmt->loop.body, indent + 1);
+      print_stmt(stmt->loop_.body, indent + 1);
       print_indent(indent);
       printf("}\n");
       break;
     //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
-    //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    deqiq bimirem    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
     case STMT_TERNARY:
       print_indent(indent);
+      printf("%s = ", string_int_rev(&global_ids, stmt->ternary.id));
+      printf("(");
       print_expr(stmt->ternary.cond);
-      printf(" ? ");
+      printf(") ? ");
       print_expr(stmt->ternary.if_true);
-      print_indent(indent);
       printf(" : ");
-      print_expr(stmt->ternary.if_false);
+      print_expr(stmt->ternary.if_false);      
+      printf("\n");
+      break;
+
+    case STMT_TER_ASSIGN:
       print_indent(indent);
-      printf(";\n");
+      printf("(");
+      print_expr(stmt->ter_assign.cond);
+      printf(") ? ");
+      printf("%s = ", string_int_rev(&global_ids, stmt->ter_assign.id1));
+      printf(" : ");
+      printf("%s = ", string_int_rev(&global_ids, stmt->ter_assign.id2));
+      printf(" = ");
+      print_expr(stmt->ter_assign.e);
       break;
     //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -207,6 +198,7 @@ void emit_stack_machine(struct expr *expr) {
         //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         case AND: printf("and\n"); break;
         case OR: printf("or\n"); break;
+        case XOR: printf("xor\n"); break;
         //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         case EQ: printf("eq\n"); break;
@@ -217,15 +209,7 @@ void emit_stack_machine(struct expr *expr) {
         case '>': printf("gt\n"); break;
         case '<': printf("lt\n"); break;
       }
-      break;
-
-    //#####################################################################################################################
-    case EXPR_TERNARY:
-      emit_stack_machine(expr->expr_ternary.cond);
-      emit_stack_machine(expr->expr_ternary.if_true);
-      emit_stack_machine(expr->expr_ternary.if_false);
-      break;
-    //#####################################################################################################################
+      break;  
   }
 }
 
@@ -262,6 +246,7 @@ int emit_reg_machine(struct expr *expr) {
         //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         case AND: printf("r%d = and r%d, r%d\n", result_reg, lhs, rhs); break;
         case OR: printf("r%d = or r%d, r%d\n", result_reg, lhs, rhs); break;
+        case XOR: printf("r%d = xor r%d, r%d\n", result_reg, lhs, rhs); break;
         //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         case EQ: printf("r%d = eq r%d, r%d\n", result_reg, lhs, rhs); break;
@@ -273,16 +258,7 @@ int emit_reg_machine(struct expr *expr) {
         case '<': printf("r%d = lt r%d, r%d\n", result_reg, lhs, rhs); break;
       }
       break;
-    }
-
-    //###################################################### duzelish ele ###############################################################
-    case EXPR_TERNARY: {
-       int if_true = emit_reg_machine(expr->expr_ternary.if_true);
-       int if_fasle= emit_reg_machine(expr->expr_ternary.if_false);
-       // print something
-       break;
-    }
-    //#####################################################################################################################
+    }  
   }
   return result_reg;
 }
@@ -333,6 +309,7 @@ enum value_type check_types(struct expr *expr) {
         //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         case AND:
         case OR:
+        case XOR:
           if (lhs == BOOLEAN && rhs == BOOLEAN)
             return BOOLEAN;
           else if (lhs == INTEGER && rhs == INTEGER)
@@ -347,20 +324,6 @@ enum value_type check_types(struct expr *expr) {
       default:
         return ERROR;
     }
-
-    //#####################################################################################################################
-    case EXPR_TERNARY: {
-      enum value_type if_true = check_types(expr->expr_ternary.if_true);
-      enum value_type if_false= check_types(expr->expr_ternary.if_false);
-      if(if_true == INTEGER && if_false == INTEGER)
-        return INTEGER;
-      else if(if_true == BOOLEAN && if_false == BOOLEAN)
-        return BOOLEAN;
-      else
-        return ERROR;      
-    }
-    //#####################################################################################################################
-
   }
 }
 
@@ -377,15 +340,6 @@ void free_expr(struct expr *expr) {
       free_expr(expr->binop.rhs);
       free(expr);
       break;
-    
-    //#####################################################################################################################
-    case EXPR_TERNARY:
-      free_expr(expr->expr_ternary.cond);
-      free_expr(expr->expr_ternary.if_true);
-      free_expr(expr->expr_ternary.if_false);
-      free(expr);
-      break;
-    //#####################################################################################################################
   }
 }
 
@@ -423,22 +377,32 @@ struct stmt* make_ifelse(struct expr *e, struct stmt *if_body, struct stmt *else
 }
 
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-struct stmt* make_loop(struct expr *num, struct stmt *body) {
+struct stmt* make_loop(size_t num, struct stmt *body) {
   struct stmt* r = malloc(sizeof(struct stmt));
   r->type = STMT_LOOP;
-  r->loop.num = num;
-  r->loop.body = body;
+  r->loop_.num = num;
+  r->loop_.body = body;
   return r;
 }
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
 //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-struct stmt* make_ternary(struct expr *cond, struct expr *if_true, struct expr *if_false){
+struct stmt* make_ternary(size_t id, struct expr *cond, struct expr *if_true, struct expr *if_false){
   struct stmt* r = malloc(sizeof(struct stmt));
   r->type = STMT_TERNARY;
+  r->ternary.id = id;
   r->ternary.cond = cond;
   r->ternary.if_true = if_true;
   r->ternary.if_false = if_false;
+  return r;   
+}
+struct stmt* make_ter_assign(struct expr *cond, size_t id1, size_t id2, struct expr *e){
+  struct stmt* r = malloc(sizeof(struct stmt));
+  r->type = STMT_TERNARY;
+  r->ter_assign.cond = cond;
+  r->ter_assign.id1 = id1;
+  r->ter_assign.id2 = id2;
+  r->ter_assign.e = e;
   return r;
 }
 //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -476,17 +440,9 @@ void free_stmt(struct stmt *stmt) {
     
     //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
     case STMT_LOOP:
-      free_expr(stmt->loop.num);
-      free_stmt(stmt->loop.body);
+      free_stmt(stmt->loop_.body);
       break;
     //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-
-    case STMT_IF:
-      free_expr(stmt->ifelse.cond);
-      free_stmt(stmt->ifelse.if_body);
-      if (stmt->ifelse.else_body)
-        free_stmt(stmt->ifelse.else_body);
-      break;
 
     //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
     case STMT_TERNARY:
@@ -494,8 +450,20 @@ void free_stmt(struct stmt *stmt) {
       free_expr(stmt->ternary.if_true);
       free_expr(stmt->ternary.if_false);
       break;
+
+    case STMT_TER_ASSIGN:
+      free_expr(stmt->ter_assign.cond);
+      free_expr(stmt->ter_assign.e);
+      break;
     //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-    
+  
+    case STMT_IF:
+      free_expr(stmt->ifelse.cond);
+      free_stmt(stmt->ifelse.if_body);
+      if (stmt->ifelse.else_body)
+        free_stmt(stmt->ifelse.else_body);
+      break;
+  
   }
 
   free(stmt);
@@ -518,26 +486,32 @@ int valid_stmt(struct stmt *stmt) {
       return 
         check_types(stmt->while_.cond) == BOOLEAN && 
         valid_stmt(stmt->while_.body);
-
-    //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-    case STMT_LOOP:
-      return check_types(stmt->loop.num) == INTEGER && valid_stmt(stmt->loop.body);
-    //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-
+    
     case STMT_IF:
       return
         check_types(stmt->ifelse.cond) == BOOLEAN &&
         valid_stmt(stmt->ifelse.if_body) &&
         (stmt->ifelse.else_body == NULL || valid_stmt(stmt->ifelse.else_body));
 
+    //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+    case STMT_LOOP:
+      return 
+        valid_stmt(stmt->loop_.body);
+    //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
     //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
     case STMT_TERNARY:
       return
-        (check_types(stmt->ternary.cond) == BOOLEAN) &&
-        (check_types(stmt->ternary.if_true) == INTEGER || check_types(stmt->ternary.if_true) == BOOLEAN) &&
-        (check_types(stmt->ternary.if_false) == INTEGER || check_types(stmt->ternary.if_false) == BOOLEAN);
+        (check_types(stmt->ternary.cond) == BOOLEAN &&
+        check_types(stmt->ternary.if_true) != ERROR &&
+        check_types(stmt->ternary.if_false) != ERROR);
+    case STMT_TER_ASSIGN:
+      return
+        check_types(stmt->ter_assign.cond) == BOOLEAN &&
+        check_types(stmt->ter_assign.e) != ERROR ;
     //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
   }
+  return 0;
 }
 
 LLVMValueRef codegen_expr(struct expr *expr, LLVMModuleRef module, LLVMBuilderRef builder) {
@@ -563,8 +537,9 @@ LLVMValueRef codegen_expr(struct expr *expr, LLVMModuleRef module, LLVMBuilderRe
         //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         case AND: return LLVMBuildAnd(builder, lhs, rhs, "andtmp");
         case OR: return LLVMBuildOr(builder, lhs, rhs, "ortmp");
+        case XOR: return LLVMBuildXor(builder, lhs, rhs, "xortmp");
         //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                
+              
         case EQ: return LLVMBuildICmp(builder, LLVMIntEQ, lhs, rhs, "eqtmp");
         case NE: return LLVMBuildICmp(builder, LLVMIntNE, lhs, rhs, "netmp");
 
@@ -574,30 +549,6 @@ LLVMValueRef codegen_expr(struct expr *expr, LLVMModuleRef module, LLVMBuilderRe
         case '<': return LLVMBuildICmp(builder, LLVMIntSLT, lhs, rhs, "lttmp");
       }
     }
-    //#####################################################################################################################
-    case EXPR_TERNARY: {
-      LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
-      LLVMBasicBlockRef body_bb = LLVMAppendBasicBlock(func, "body");
-      LLVMBasicBlockRef else_bb = LLVMAppendBasicBlock(func, "else");
-      LLVMBasicBlockRef cont_bb = LLVMAppendBasicBlock(func, "cont");
-
-      LLVMValueRef cond = codegen_expr(expr->expr_ternary.cond, module, builder);
-      LLVMBuildCondBr(builder, cond, body_bb, else_bb);
-
-      LLVMPositionBuilderAtEnd(builder, body_bb);
-      codegen_expr(expr->expr_ternary.if_true, module, builder);
-      LLVMBuildBr(builder, cont_bb);
-
-      LLVMPositionBuilderAtEnd(builder, else_bb);
-      if (expr->expr_ternary.if_false) {
-        codegen_expr(expr->expr_ternary.if_false, module, builder);
-      }
-      LLVMBuildBr(builder, cont_bb);
-
-      LLVMPositionBuilderAtEnd(builder, cont_bb);
-    }  
-    //#####################################################################################################################
-      
   }
   return NULL;
 }
@@ -642,28 +593,29 @@ void codegen_stmt(struct stmt *stmt, LLVMModuleRef module, LLVMBuilderRef builde
 
       LLVMPositionBuilderAtEnd(builder, cont_bb);
       break;
-    }
-    //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-    case STMT_LOOP: {
+    }   
 
+     //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+    case STMT_LOOP: {
       LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
       LLVMBasicBlockRef cond_bb = LLVMAppendBasicBlock(func, "cond");
       LLVMBasicBlockRef body_bb = LLVMAppendBasicBlock(func, "body");
       LLVMBasicBlockRef cont_bb = LLVMAppendBasicBlock(func, "cont");
 
-      LLVMBuildBr(builder, cond_bb);
+      LLVMBuildBr(builder, cond_bb);   
 
       LLVMPositionBuilderAtEnd(builder, cond_bb);
-      LLVMValueRef cond = codegen_expr(binop(stmt->loop.num, '>=', literal(0)), module, builder);
+      struct expr *cond_tmp = binop(variable(stmt->loop_.num), '>', literal(1));
+      LLVMValueRef cond = codegen_expr(cond_tmp, module, builder);
       LLVMBuildCondBr(builder, cond, body_bb, cont_bb);
 
       LLVMPositionBuilderAtEnd(builder, body_bb);
-      codegen_stmt(stmt->loop.body, module, builder);
-      codegen_expr(binop(stmt->loop.num, '-', literal(1)), module, builder);
+      codegen_stmt(stmt->loop_.body, module, builder);
+      struct stmt * decr_tmp = make_assign(stmt->loop_.num, binop(variable(stmt->loop_.num), '-', literal(1)));
+      codegen_stmt(decr_tmp, module, builder);
       LLVMBuildBr(builder, cond_bb);
 
       LLVMPositionBuilderAtEnd(builder, cont_bb);
-
       break;
     }
     //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
@@ -679,11 +631,37 @@ void codegen_stmt(struct stmt *stmt, LLVMModuleRef module, LLVMBuilderRef builde
       LLVMBuildCondBr(builder, cond, body_bb, else_bb);
 
       LLVMPositionBuilderAtEnd(builder, body_bb);
-      codegen_expr(stmt->ternary.if_true, module, builder);
+      struct stmt *body_tmp = make_assign(stmt->ternary.id, stmt->ternary.if_true);
+      codegen_stmt(body_tmp, module, builder);
       LLVMBuildBr(builder, cont_bb);
 
       LLVMPositionBuilderAtEnd(builder, else_bb);
-      codegen_expr(stmt->ternary.if_false, module, builder);
+      struct stmt *else_tmp = make_assign(stmt->ternary.id, stmt->ternary.if_false);
+      codegen_stmt(else_tmp, module, builder);      
+      LLVMBuildBr(builder, cont_bb);
+
+      LLVMPositionBuilderAtEnd(builder, cont_bb);
+      break;
+    } 
+
+    case STMT_TER_ASSIGN: {
+      LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
+      LLVMBasicBlockRef body_bb = LLVMAppendBasicBlock(func, "body");
+      LLVMBasicBlockRef else_bb = LLVMAppendBasicBlock(func, "else");
+      LLVMBasicBlockRef cont_bb = LLVMAppendBasicBlock(func, "cont");
+
+      LLVMValueRef cond = codegen_expr(stmt->ter_assign.cond, module, builder);
+      LLVMBuildCondBr(builder, cond, body_bb, else_bb);
+
+
+      LLVMPositionBuilderAtEnd(builder, body_bb);
+      struct stmt *body_tmp = make_assign(stmt->ter_assign.id1, stmt->ter_assign.e);
+      codegen_stmt(body_tmp, module, builder);
+      LLVMBuildBr(builder, cont_bb);
+
+      LLVMPositionBuilderAtEnd(builder, else_bb);
+      struct stmt *else_tmp = make_assign(stmt->ter_assign.id2, stmt->ter_assign.e);
+      codegen_stmt(else_tmp, module, builder);      
       LLVMBuildBr(builder, cont_bb);
 
       LLVMPositionBuilderAtEnd(builder, cont_bb);

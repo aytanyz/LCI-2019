@@ -1,0 +1,12 @@
+bool a;
+bool b;
+bool c;
+bool d;
+{
+    a=true;
+    b=false;
+    d = a && b;
+    c=false;
+    d = a || b || c;
+    print d;
+}

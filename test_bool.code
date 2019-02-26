@@ -24,4 +24,8 @@ bool z;
 
     z = x || y;
     print z;
+
+    c = a ^ b;
+    print c;
+    
 }

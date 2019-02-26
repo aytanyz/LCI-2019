@@ -15,6 +15,7 @@ ID       [A-Za-z][A-Za-z0-9]*
 
 if                 { return IF; }
 else               { return ELSE; }
+loop               { return LOOP; }
 while              { return WHILE; }
 print              { return PRINT; }
 int                { return INT_TYPE; }
@@ -31,9 +32,11 @@ false              { return FALSE; }
 !=                 { return NE; }
 &&                 { return AND; }
 \|\|               { return OR; }
+\^                 { return XOR; }
 --                 { return MINUS; }
 \++                { return PLUS; }
-loop               { return LOOP; }
+\?                 { return QUES; }
+:                  { return DOT; }
 .                  yyerror(NULL, NULL, "Unexpected character");
 
 %%

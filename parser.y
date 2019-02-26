@@ -34,12 +34,12 @@
   struct stmt *stmt;
 }
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%token AND OR
+%token XOR AND OR 
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %token GE LE EQ NE
 %token FALSE TRUE
+%token IF ELSE QUES DOT WHILE PRINT
 %token LOOP
-%token IF ELSE WHILE PRINT
 %token BOOL_TYPE INT_TYPE
 %token <id> ID
 %token <value> VAL
@@ -100,7 +100,9 @@ stmt: '{' stmts '}'                           { $$ = $2; }
       | IF '(' expr ')' stmt %prec IF_ALONE   { $$ = make_if($3, $5); }
       | IF '(' expr ')' stmt ELSE stmt        { $$ = make_ifelse($3, $5, $7); }
       | WHILE '(' expr ')' stmt               { $$ = make_while($3, $5); }
-      | LOOP '(' expr ')' stmt                { $$ = make_loop($3, $5); }
+      | LOOP '(' ID ')' stmt                  { $$ = make_loop($3, $5); }
+      | ID '=' expr QUES expr DOT expr ';'    { $$ = make_ternary($1, $3, $5, $7); }
+      | expr QUES ID DOT ID '=' expr ';'      { $$ = make_ter_assign($1, $3, $5, $7); }
       | PRINT expr ';'                        { $$ = make_print($2); }
 
 expr: VAL                           { $$ = literal($1); }
@@ -116,8 +118,7 @@ expr: VAL                           { $$ = literal($1); }
 
       | expr AND expr               { $$ = binop($1, AND, $3); } 
       | expr OR expr                { $$ = binop($1, OR, $3); } 
-
-      | expr '?' expr ':' expr      { $$ = make_expr_ternary($1, $3, $5); }
+      | expr XOR expr               { $$ = binop($1, XOR, $3); }
 
       | expr EQ  expr               { $$ = binop($1, EQ, $3); }
       | expr NE  expr               { $$ = binop($1, NE, $3); }

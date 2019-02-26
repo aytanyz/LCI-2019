@@ -3,10 +3,14 @@ int b;
 int max;
 
 {
+    max = 10;
     a=6;
     b=9;
 
-    max = (a>b) ? a : b;
-    
+    max = (a>b) ? a : b;    
     print max;
+
+    (4>6) ? a : b = 0;
+    print a;
+    print b;    
 }
